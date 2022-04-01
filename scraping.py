@@ -8,7 +8,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 def scrape_all():
     # Initiate headless driver for deployment
     executable_path = {'executable_path': ChromeDriverManager().install()}
-    browser = Browser('chrome', **executable_path, headless=False)
+    browser = Browser('chrome', **executable_path, headless=True)
     news_title, news_paragraph = mars_news(browser)
 
     # Run all scraping functions and store results in dictionary
@@ -17,7 +17,9 @@ def scrape_all():
         "news_paragraph": news_paragraph,
         "featured_image": featured_image(browser),
         "facts": mars_facts(),
+        "hemispheres": hemisphere_data(browser),
         "last_modified": dt.datetime.now()
+
     }
 
     # Stop webdriver and return data
@@ -90,13 +92,52 @@ def mars_facts():
     
     except BaseException:
         return None
-    
+
     #Assign columns and set index of dataframe
     df.columns=['Description', 'Mars', 'Earth']
     df.set_index('Description', inplace=True)
     
+    facts = df.to_html()
+
     # Convert dataframe into HTML format, add bootstrap
-    df.to_html()
+    return facts
+
+
+## Mars Hemisphere Data
+def hemisphere_data(browser):
+    # Visit the hemisphere site
+    url = 'https://marshemispheres.com/'
+    browser.visit(url)
+
+    # Create list to hold images and titles
+    hemisphere_image_urls = []
+
+    # For Loop to Retrieve image URLS and titles for each hemisphere
+    for hemisphere in range(0,4):
+
+        hemispheres = {}
+
+        hemi_click = browser.links.find_by_partial_text('Hemisphere')[hemisphere]
+        hemi_click.click()
+
+        # Find .jpg image
+        html = browser.html
+        full_img_soup = soup(html, 'html.parser')
+        img_jpg = full_img_soup.find('img', class_='wide-image').get('src')
+        full_img_url = f"https://marshemispheres.com/{img_jpg}"
+
+        # Find the image title and set hemisphere dictionary
+        title = full_img_soup.find('h2', class_='title').get_text()
+        hemisphere = {'full_img_url': full_img_url, 'title': title}
+
+        # Add Dictionary to list
+        hemisphere_image_urls.append(hemisphere)
+
+        # Go back to main page
+        browser.back()
+
+    return hemisphere_image_urls
+
 
 if __name__ == "__main__":
 
